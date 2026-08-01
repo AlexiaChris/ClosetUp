@@ -1,6 +1,7 @@
-import { Controller } from '@nestjs/common';
-import { Get } from '@nestjs/common';
+import { Controller, Post } from '@nestjs/common';
+import { Get, Body } from '@nestjs/common';
 import { ClosetService } from './closet.service';
+import { ClosetItemDto } from './dto/closetItemDto.dto';
 
 @Controller('closet')
 export class ClosetController {
@@ -12,6 +13,12 @@ export class ClosetController {
 
     @Get()
     getService() {
-        return this.closetService.findAll()
+        return this.closetService.findAll();
     }
+
+    @Post()
+    postService(@Body() data: ClosetItemDto) {
+        return this.closetService.create(data);
+    }
+
 }
