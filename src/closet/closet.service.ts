@@ -4,6 +4,7 @@ import { ClosetItemDto } from './dto/closetItemDto.dto';
 import { removeBackground } from '@imgly/background-removal-node';
 import * as fs from 'fs';
 import { GoogleGenAI } from '@google/genai';
+import { v2 as cloudinary } from 'cloudinary';
 
 @Injectable()
 export class ClosetService {
@@ -27,10 +28,11 @@ export class ClosetService {
             finalBuffer = Buffer.from(arrayBuffer);
         }
 
+        const imageUrl = await this.uploadToCloudinary(finalBuffer);
         const aiResult = await this.analyzeImage(finalBuffer, file.mimetype);
         const savedItem = await this.prisma.closetItem.create({
             data: {
-                imageURL: 'placeholder.jpg',
+                imageURL: imageUrl,
                 category: aiResult.category,
                 subcategory: aiResult.subcategory,
                 color: aiResult.color,
@@ -48,29 +50,29 @@ export class ClosetService {
 
         const prompt = `Analyze this clothing/accessory item and return ONLY valid JSON, no other text, in this exact format:
 
-{
-  "category": "top" | "bottom" | "shoes" | "accessories",
-  "subcategory": "specific type, e.g. sweater, jeans, sneakers, sunglasses, headphones",
-  "color": "dominant color",
-  "styleTags": [],
-  "formality": "casual" | "smart casual" | "formal"
-}
+        {
+        "category": "top" | "bottom" | "shoes" | "accessories",
+        "subcategory": "specific type, e.g. sweater, jeans, sneakers, sunglasses, headphones",
+        "color": "dominant color",
+        "styleTags": [],
+        "formality": "casual" | "smart casual" | "formal"
+        }
 
-For style_tags: choose 1-3 styles ONLY if the item clearly matches the defining traits below. It's expected and fine for most items to match just 1 style. If an item is style-neutral/versatile and doesn't clearly signal any specific style (common for plain accessories, tech items, basics, or purely functional items), return an empty array — do NOT force-fit an item into a category it doesn't clearly match.
+        For style_tags: choose 1-3 styles ONLY if the item clearly matches the defining traits below. It's expected and fine for most items to match just 1 style. If an item is style-neutral/versatile and doesn't clearly signal any specific style (common for plain accessories, tech items, basics, or purely functional items), return an empty array — do NOT force-fit an item into a category it doesn't clearly match.
 
-- Casual: relaxed/loose fit, everyday basics, low-effort, no dressy details
-- Minimalist: fitted/structured basics, neutral colors, clean lines
-- Old Money: tailored, muted neutral tones, quiet luxury pieces (cable-knit, blazer, loafers)
-- Preppy: collared shirt/blouse, blazer or cardigan (navy/black/plaid), a-line or plaid mini skirt, knee-high socks, boots or loafers, headband, dark neutral palette, youthful school-uniform coded
-- Streetwear: oversized, graphic prints, sneakers, cargo
-- Grunge: earthy/muted washed tones, loose/rugged fit, flannel-adjacent
-- Emo: black-dominant palette, fitted, dark accessories (chains, studs)
-- Y2K: metallic, low-rise, glossy, logo-heavy, Y2K-era cuts
-- Vintage: retro-inspired cuts referencing 90s era
-- Cottagecore: earthy tones, floral/gingham, pastoral/romantic, linen/crochet texture
-- Academia: dark academic tones (burgundy, forest green), tweed/wool, literary/collegiate, turtleneck, long coat
-- Boho: flowy fabric, fringe, earthy prints, free-spirited silhouette
-- Coquette: sheer/lace fabric, ruffle & bow/ribbon detail, pastel palette (especially pink), delicate feminine silhouette`
+        - Casual: relaxed/loose fit, everyday basics, low-effort, no dressy details
+        - Minimalist: fitted/structured basics, neutral colors, clean lines
+        - Old Money: tailored, muted neutral tones, quiet luxury pieces (cable-knit, blazer, loafers)
+        - Preppy: collared shirt/blouse, blazer or cardigan (navy/black/plaid), a-line or plaid mini skirt, knee-high socks, boots or loafers, headband, dark neutral palette, youthful school-uniform coded
+        - Streetwear: oversized, graphic prints, sneakers, cargo
+        - Grunge: earthy/muted washed tones, loose/rugged fit, flannel-adjacent
+        - Emo: black-dominant palette, fitted, dark accessories (chains, studs)
+        - Y2K: metallic, low-rise, glossy, logo-heavy, Y2K-era cuts
+        - Vintage: retro-inspired cuts referencing 90s era
+        - Cottagecore: earthy tones, floral/gingham, pastoral/romantic, linen/crochet texture
+        - Academia: dark academic tones (burgundy, forest green), tweed/wool, literary/collegiate, turtleneck, long coat
+        - Boho: flowy fabric, fringe, earthy prints, free-spirited silhouette
+        - Coquette: sheer/lace fabric, ruffle & bow/ribbon detail, pastel palette (especially pink), delicate feminine silhouette`
 
         const response = await ai.models.generateContent({
             model: 'gemini-3.5-flash-lite',
@@ -95,5 +97,22 @@ For style_tags: choose 1-3 styles ONLY if the item clearly matches the defining 
             throw new Error(`Gemini didn't respond`);
         }
         return JSON.parse(text);
+    }
+
+    async uploadToCloudinary(buffer:Buffer): Promise<string> {
+        cloudinary.config({
+            cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+            api_key: process.env.CLOUDINARY_API_KEY,
+            api_secret: process.env.CLOUDINARY_API_SECRET
+        });
+
+        const base64img = buffer.toString('base64');
+        const dataUri = `data:image/png;base64,${base64img}`;
+
+        const result = await cloudinary.uploader.upload(dataUri, {
+            folder: 'closet_items'
+        });
+
+        return result.secure_url;
     }
 }
