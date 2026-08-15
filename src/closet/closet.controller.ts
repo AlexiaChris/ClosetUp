@@ -1,8 +1,6 @@
-import { Controller, Post } from '@nestjs/common';
-import { Get, Body } from '@nestjs/common';
+import { Controller, Post, Query, Get, Body, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { ClosetService } from './closet.service';
 import { ClosetItemDto } from './dto/closetItemDto.dto';
-import { UseInterceptors, UploadedFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('closet')
@@ -16,6 +14,11 @@ export class ClosetController {
     @Get()
     getService() {
         return this.closetService.findAll();
+    }
+
+    @Get('outfit/generate')
+    generateOutfit(@Query('style') style?: string) {
+        return this.closetService.generateOutfit(style);
     }
 
     @Post()
