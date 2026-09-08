@@ -22,4 +22,53 @@ model ClosetItem {
   color String
   styleTags String
   formality String
+
+  onePieceOutfits SavedOutfit[] @relation("OnePieceSaved")
+  topOutfits SavedOutfit[] @relation("TopSaved")
+  bottomOutfits SavedOutfit[] @relation("BottomSaved")
+  outerOutfits SavedOutfit[] @relation("OuterSaved")
+  shoesOutfits SavedOutfit[] @relation("ShoesSaved")
+  accessoryOutfits SavedOutfitAccessory[] @relation("AccessorySaved")
+}
+
+model SavedOutfit {
+  id Int @id @default(autoincrement())
+  name String?
+  onePieceId Int?
+  topId Int?
+  bottomId Int?
+  shoesId Int?
+  outerId Int?
+  accessories SavedOutfitAccessory[]
+  createdAt DateTime @default(now())
+  folders OutfitFolder[]
+
+  onePiece ClosetItem? @relation("OnePieceSaved", fields: [onePieceId], references: [id])   //FK dari id di ClosetItem
+  top ClosetItem? @relation("TopSaved", fields: [topId], references: [id])
+  bottom ClosetItem? @relation("BottomSaved", fields: [bottomId], references: [id])
+  shoes ClosetItem? @relation("ShoesSaved", fields: [shoesId], references: [id])
+  outer ClosetItem? @relation("OuterSaved", fields: [outerId], references: [id])
+}
+
+model SavedOutfitAccessory {
+  outfitId Int
+  itemId Int
+  outfit SavedOutfit @relation(fields: [outfitId], references: [id])
+  item ClosetItem @relation("AccessorySaved", fields: [itemId], references: [id])
+  @@id([outfitId, itemId])
+}
+
+model Folder {
+  id Int @id @default(autoincrement())
+  name String
+  createdAt DateTime @default(now())
+  outfits OutfitFolder[]
+}
+
+model OutfitFolder {
+  outfitId Int
+  folderId Int
+  outfit SavedOutfit @relation(fields: [outfitId], references: [id])
+  folder Folder @relation(fields: [folderId], references: [id])
+  @@id([outfitId, folderId])
 }
